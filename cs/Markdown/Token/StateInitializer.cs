@@ -1,4 +1,7 @@
-﻿namespace Markdown
+﻿using System;
+using System.Collections.Generic;
+
+namespace Markdown
 {
     public class StateInitializer
     {
@@ -7,6 +10,7 @@
         private State shieldingState;
         private State italicsState;
         private State boldState;
+        private State imageState;
         private State headingState;
 
         private StateInitializer(TokenProvider provider)
@@ -31,6 +35,7 @@
             shieldingState = State.Create();
             italicsState = State.Create();
             boldState = State.Create();
+            imageState = State.Create();
             headingState = State.Create();
         }
 
@@ -40,12 +45,14 @@
             InitShieldingState();
             InitItalicsState();
             InitBoldState();
+            InitImageState();
             InitHeadingState();
         }
 
         private void InitStartState()
         {
             startState
+                .AddTransition('~', imageState)
                 .AddTransition('\\', shieldingState)
                 .AddTransition('_', italicsState)
                 .AddTransition('\n', headingState)
@@ -67,6 +74,7 @@
         private void InitItalicsState()
         {
             italicsState
+                .AddTransition('~', imageState)
                 .AddTransition('_', boldState)
                 .AddTransition('\\', shieldingState)
                 .AddTransition('\n', headingState)
@@ -99,6 +107,7 @@
         private void InitBoldState()
         {
             boldState
+                .AddTransition('~', imageState)
                 .AddTransition('_', italicsState)
                 .AddTransition('\\', shieldingState)
                 .AddTransition('\n', headingState)
@@ -121,6 +130,35 @@
         {
             return provider.GetStack(typeof(ItalicsTag)).TryPeek(out var italicsToken)
                    && !IsReadyToken(italicsToken);
+        }
+
+        private void InitImageState()
+        {
+            imageState
+                .AddTransition('\n', headingState)
+                .AddTransition('\\', shieldingState)
+                .AddTransition('_', italicsState)
+                .SetFallback(startState)
+                .SetOnEntry((s, i) =>
+                {
+                    var imageTokens = provider.GetStack(typeof(ImageTag));
+                    if (!imageTokens.TryPeek(out var imageToken))
+                        imageTokens.Push(new Token(i, new ImageTag()));
+                    else
+                    {
+                        RemoveInnerTokens(typeof(ItalicsTag), imageToken);
+                        RemoveInnerTokens(typeof(BoldTag), imageToken);
+                        imageToken.Length = i - imageToken.StartPosition + 1;
+                    }
+                });
+        }
+
+        private void RemoveInnerTokens(Type innerTokenType, Token imageToken)
+        {
+            var tokens = provider.GetStack(innerTokenType);
+            while (tokens.TryPeek(out var token) &&
+                   token.StartPosition > imageToken.StartPosition)
+                tokens.Pop();
         }
 
         private void InitHeadingState()

@@ -19,8 +19,9 @@ namespace Markdown
         {
             stacks.Add(typeof(ItalicsTag), new Stack<Token>());
             stacks.Add(typeof(BoldTag), new Stack<Token>());
-            stacks.Add(typeof(HeadingTag), new Stack<Token>());
             stacks.Add(typeof(ShieldingTag), new Stack<Token>());
+            stacks.Add(typeof(ImageTag), new Stack<Token>());
+            stacks.Add(typeof(HeadingTag), new Stack<Token>());
             stacks[typeof(HeadingTag)].Push(new Token(0, new HeadingTag()) {Length = src.Length - 1});
             return this;
         }

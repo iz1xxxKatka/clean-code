@@ -446,6 +446,49 @@ namespace Markdown
                 .HaveCount(1);
         }
 
+        [TestCase(" ~abc~ ")]
+        [TestCase("_a ~abc~ b_")]
+        [TestCase("__a ~abc~ b__")]
+        [TestCase("# ~abc~")]
+        public void FindTokens_ShouldFind_ImageMarkup(string source)
+        {
+            converter
+                .Initialize(source)
+                .FindTokens()
+                .GetTokens()
+                .Where(t => t.Tag is ImageTag)
+                .Should()
+                .HaveCount(1);
+        }
+        
+        [TestCase("~abc")]
+        [TestCase("abc~")]
+        [TestCase("~abc~a")]
+        [TestCase("a~abc~")]
+        public void FindTokens_ShouldNotFind_IncorrectImageMarkup(string source)
+        {
+            converter
+                .Initialize(source)
+                .FindTokens()
+                .GetTokens()
+                .Where(t => t.Tag is ImageTag)
+                .Should()
+                .BeEmpty();
+        }
+        
+        [TestCase("~_abc_~")]
+        [TestCase("~__abc__~")]
+        public void FindTokens_ShouldNotFind_InnerMarkupImageMarkup(string source)
+        {
+            converter
+                .Initialize(source)
+                .FindTokens()
+                .GetTokens()
+                .Where(t => !(t.Tag is ImageTag))
+                .Should()
+                .BeEmpty();
+        }
+
         [TestCase("# abc", "<h1>abc</h1>")]
         [TestCase("# abc\n", "<h1>abc</h1>\n")]
         [TestCase("# abc\n# abc\n", "<h1>abc</h1>\n<h1>abc</h1>\n")]
@@ -466,6 +509,7 @@ namespace Markdown
         [TestCase("В то же время выделение в ра_зных сл_овах не работает.",
             "В то же время выделение в ра_зных сл_овах не работает.")]
         [TestCase("\\_Вот это\\_", "_Вот это_")]
+        [TestCase("# __a _a ~lol~ b_ b__", "<h1><strong>a <em>a <img src=\"lol\"/> b</em> b</strong></h1>")]
         public void Build_ShouldReturnCorrectString(string source, string result)
         {
             converter
@@ -475,7 +519,7 @@ namespace Markdown
                 .Should()
                 .Be(result);
         }
-
+        
         [TestCase("__a____a____a__\\_\\_\\_\n# \n")]
         [TestCase("# Заголовок __с _разными_ символами__")]
         public void TokenConverter_ShouldHaveLinearComplexity(string source)
